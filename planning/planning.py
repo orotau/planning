@@ -1,34 +1,36 @@
 from __future__ import print_function
-from googleapiclient.discovery import build
+
+from apiclient import discovery
 from httplib2 import Http
 from oauth2client import file, client, tools
-from datetime import datetime, date
-import calendar
 import pprint
-from itertools import compress, cycle, islice
 
+SCOPES = (
+    'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/calendar.readonly',
+)
 
-# Setup the Calendar API (Boiler Plate)
-SCOPES = 'https://www.googleapis.com/auth/calendar' # read / write
-store = file.Storage('credentials.json')
+# storage.json gets created when you run authorise.py
+store = file.Storage('storage.json')
 creds = store.get()
 if not creds or creds.invalid:
     flow = client.flow_from_clientsecrets('client_secret.json', SCOPES)
     creds = tools.run_flow(flow, store)
-service = build('calendar', 'v3', http=creds.authorize(Http()))
+DRIVE = discovery.build('drive', 'v3', http=creds.authorize(Http()))
+CALENDAR = discovery.build('calendar', 'v3', http=creds.authorize(Http()))
 
-def get_calendars():
-    page_token = None
-    calendars =[]
-    while True:
-        calendar_list = service.calendarList().list(pageToken=page_token, showHidden=True).execute()
-        for calendar_list_entry in calendar_list['items']:
-            calendars.append(calendar_list_entry)
-        page_token = calendar_list.get('nextPageToken')
-        if not page_token:
-            break
-    return calendars
+def get_term_events(term):
+    #TO DO
+    pass
 
+def get_files():
+    files = DRIVE.files().list().execute().get('files', [])
+    pprint.pprint(files)
+    '''
+    for f in files:
+        pprint.pprint(f['name'], f['mimeType'])
+    '''
+    
 
 if __name__ == '__main__':
 
@@ -41,32 +43,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
-    # create the parser for the get_calendars
-    get_calendars_parser = subparsers.add_parser('get_calendars')
-    get_calendars_parser.set_defaults(function = get_calendars)
-
-    '''
-    # create the parser for the get_teaching_dates_and_day_number
-    get_teaching_dates_and_day_number_parser = subparsers.add_parser('get_teaching_dates_and_day_number')
-    get_teaching_dates_and_day_number_parser.add_argument('term', type=int, choices = [1, 2, 3, 4])
-    get_teaching_dates_and_day_number_parser.set_defaults(function = get_teaching_dates_and_day_number)
-
-    # create the parser for the function create_new_calendar
-    create_new_calendar_parser = subparsers.add_parser('create_new_calendar')
-    create_new_calendar_parser.add_argument('term', type=int, choices = [1, 2, 3, 4])
-    create_new_calendar_parser.set_defaults(function = create_new_calendar)
-
-    # create the parser for the create_periods_for_term
-    create_periods_for_term_parser = subparsers.add_parser('create_periods_for_term')
-    create_periods_for_term_parser.add_argument('term', type=int, choices = [1, 2, 3, 4])
-    create_periods_for_term_parser.add_argument('new_calendar_id')
-    create_periods_for_term_parser.set_defaults(function = create_periods_for_term)
-
-    # create the parser for the create_term_calendar
-    create_term_calendar_parser = subparsers.add_parser('create_term_calendar')
-    create_term_calendar_parser.add_argument('term', type=int, choices = [1, 2, 3, 4])
-    create_term_calendar_parser.set_defaults(function = create_term_calendar)
-    '''
+    # create the parser for the get_files
+    get_files_parser = subparsers.add_parser('get_files')
+    get_files_parser.set_defaults(function = get_files)
 
     # parse the arguments
     arguments = parser.parse_args()

@@ -1,0 +1,10 @@
+I had to create a separate authorise file to run first time
+as was getting an error otherwise...
+
+  warnings.warn(_MISSING_FILE_MESSAGE.format(filename))
+usage: planning.py [--auth_host_name AUTH_HOST_NAME]
+                   [--noauth_local_webserver]
+                   [--auth_host_port [AUTH_HOST_PORT [AUTH_HOST_PORT ...]]]
+                   [--logging_level {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
+planning.py: error: unrecognized arguments: get_calendars
+
