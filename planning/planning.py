@@ -13,6 +13,7 @@ MATHS = "Maths"
 TOPIC = "Topic"
 
 doc_title = collections.namedtuple("doc_title", "year term week subject")
+main_heading_data = collections.namedtuple("main_heading_data", "dayte, event_summary")
 
 
 SCOPES = (
@@ -29,7 +30,9 @@ if not creds or creds.invalid:
 DRIVE = discovery.build('drive', 'v3', http=creds.authorize(Http()))
 CALENDAR = discovery.build('calendar', 'v3', http=creds.authorize(Http()))
 
-TOPIC_FOLDER_ID = "1_IHOrfJsm9bNOrEkzIKsXQcBf5utVUfp" # term 3 2018
+# to run remove the X from the beginning of the folder ids
+TOPIC_FOLDER_ID = "X1_IHOrfJsm9bNOrEkzIKsXQcBf5utVUfp" # term 3 2018
+MATHS_FOLDER_ID = "X1_5iNW1G7_Sjfxhesx-LBAH-av8MsauO-" # term 3 2018
 
 
 def get_calendar_id(term, year):
@@ -72,7 +75,7 @@ def get_events_for_calendar(calendar_id):
 def get_documents_data(term, year, subject, calendar_events):
     '''
     We will return a dictionary with key = the named tuple ("doc_title", "year term week subject")
-    and data = a list of the the tuples (event_date, event summary)
+    and data = a list of the the named tuples ("main_heading_data", "dayte, event_summary")
     if there is no lesson on a dayte then both period and lesson_number will be set to 0
     '''
     documents_data = {}
@@ -96,7 +99,8 @@ def get_documents_data(term, year, subject, calendar_events):
 
     for counter, weeks_all_day_events in enumerate(more_itertools.chunked(all_day_events, 5)):
         # each week
-        subject_keys.append(doc_title(year, "Term " + str(term), "Week " + '{:02}'.format(counter + 1), subject))
+        week = counter + 1
+        subject_keys.append(doc_title(year, term, week, subject))
         periods_for_week = []
         for all_day_event in weeks_all_day_events:
             # each day of the week
@@ -104,27 +108,59 @@ def get_documents_data(term, year, subject, calendar_events):
                 event_date = iso8601.parse_date(event['start']['dateTime']).date()
                 all_day_event_date = datetime.strptime(all_day_event['start']['date'], '%Y-%m-%d').date()
                 if event_date == all_day_event_date:                    
-                    periods_for_week.append((event_date, event['summary']))
+                    periods_for_week.append(main_heading_data(event_date, event['summary']))
         documents_data[subject_keys[counter]] = periods_for_week
     return(documents_data)
-        
 
-def get_files():
-    files = DRIVE.files().list().execute().get('files', [])
-    pprint.pprint(files)
-    '''
-    for f in files:
-        pprint.pprint(f['name'], f['mimeType'])
-    '''
+def create_documents(documents_data):
+    # for each document, create the .docx, upload it as google doc
+    for k,v in documents_data.items():
+        from docx import Document
+
+        new_document = Document()
+        heading = str(k.year) + " - " + "Term " + str(k.term) + " - " + "Week " + str(k.week) + " - " + k.subject
+
+        new_document.add_heading(heading, 0)
+        new_document.add_heading("Summary", 1)
+        new_document.add_paragraph('')
+        for counter, heading_data in enumerate(v):
+            date_to_use = datetime.strftime(heading_data.dayte, '%A %d %B')
+            period_text = heading_data.event_summary[:8] # Period X
+            lesson_text = "L" + str(counter + 1)
+            heading = date_to_use + " - " + period_text + " - " + lesson_text
+            new_document.add_heading(heading, 1)
+            if k.subject == TOPIC:
+                new_document.add_paragraph('')
+            if k.subject == MATHS:
+                # add a table for kākāriki and kiwikiwi
+                table = new_document.add_table(rows=2, cols=2)
+                table.style = 'TableGrid' #deprecated could break (it provides borders)
+                # https://stackoverflow.com/questions/23725352/bold-a-table-cells
+                table.cell(0, 0).paragraphs[0].add_run('kākāriki (green)').bold = True
+                table.cell(0, 1).paragraphs[0].add_run('kiwikiwi (grey)').bold = True
+
+        # to allow sorting properly use leading zero in week
+        file_name = str(k.year) + " - " + "Term " + str(k.term) + " - " + "Week " + '{:02}'.format(k.week) + " - " + k.subject
+        new_document.save(file_name + ".docx")
+
+        #upload the document to google drive under the header folder
+        if k.subject == MATHS:
+            folder_id_to_use = MATHS_FOLDER_ID
+        if k.subject == TOPIC:
+            folder_id_to_use = TOPIC_FOLDER_ID
+
+        # http://wescpy.blogspot.com/search/label/python3
+        mimeType = "application/vnd.google-apps.document"
+        body = {'name': file_name, 'mimeType': mimeType, 'parents': [folder_id_to_use]}
+        DRIVE.files().create(body=body, media_body=file_name+'.docx', supportsTeamDrives=True, fields='id').execute().get('id')
 
 def create_planning_skeletons(term, year):
     calendar_id = get_calendar_id(term, year)
     calendar_events = get_events_for_calendar(calendar_id)
     documents_data_maths = get_documents_data(term, year, MATHS, calendar_events)
     documents_data_topic = get_documents_data(term, year, TOPIC, calendar_events)
-    for k, v in documents_data_maths.items():
-        print(k, v)
-    return(documents_data_maths)
+    create_documents(documents_data_maths)
+    create_documents(documents_data_topic)
 
     
 
@@ -155,10 +191,6 @@ if __name__ == '__main__':
     create_planning_skeletons_parser.add_argument('term', type=int, choices = [1, 2, 3, 4])
     create_planning_skeletons_parser.add_argument('year', type=int)
     create_planning_skeletons_parser.set_defaults(function = create_planning_skeletons)
-
-    # create the parser for the get_files
-    get_files_parser = subparsers.add_parser('get_files')
-    get_files_parser.set_defaults(function = get_files)
 
     # parse the arguments
     arguments = parser.parse_args()

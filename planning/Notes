@@ -1,3 +1,21 @@
+This project is somewhat of a botch but it does work after a fashion
+
+TO RUN YOU WILL HAVE TO CHANGE THE FOLDER IDS (SEE CODE)
+
+Notes
+1. The purpose is to create a set of document planning skeletons for Topic and Maths
+2. The files are created in msword and then uploaded to google as google docs. They are NOT overwritten on google.
+3. The files have to be deleted from your machine manually
+4. It should run ok for term 4
+5. It will not work for any term that does not begin on a Monday
+6. Deprecated code is present to add borders to the table (for the maths docs)
+
+Some Issues
+a) The files are created as google docs to prevent accidental duplication when using the google ui
+b) If the week number had been added to the daily events in the calendar then this would have made things easier. This could be an enhancement
+c) The formatting of the maths docs is "taken over" by google
+
+
 I had to create a separate authorise file to run first time
 as was getting an error otherwise...
 
